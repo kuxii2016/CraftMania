@@ -9,9 +9,11 @@ using System.Collections.Generic;
 public class Chunck : MonoBehaviour {
 
 	public Block[, ,] map;
-	public static int Width = 20, Height = 10;
+	public static int Width = 35, Height = 10;
     public static bool working = false;
 	public static List<Chunck> Chuncks = new List<Chunck> ();
+    List<Color> colors = new List<Color>();
+    public static int seed = 505;
     bool ready = false;
 	List<Vector3> vertices = new List<Vector3> ();
 	List<int> triangulos = new List<int> ();
@@ -49,14 +51,7 @@ public class Chunck : MonoBehaviour {
 			{
 				for(int z = 0; z < Width; z++)
 				{
-					if (y < 5) 
-					{
-						map [x, y, z] = Block.getBlock ("Dirt");
-					}
-					if(y == 5 && Random.Range(0, 5) == 1)
-					{
-						map[x, y, z] = Block.getBlock("Grass");
-					}
+                    map[x, y, z] = GetTheoreticalBlock(transform.position + new Vector3(x, y, z));
 				}
 			}
 		}
@@ -75,6 +70,7 @@ public class Chunck : MonoBehaviour {
 				{
 					if (map [x, y, z] != null) 
 					{
+                        if (y < 1) continue;
                         if (isBlockTransparent(x, y, z + 1))
                         {
                             AddCubeFront(x, y, z, map[x, y, z]);
@@ -106,6 +102,7 @@ public class Chunck : MonoBehaviour {
   
 		mesh.vertices = vertices.ToArray ();
 		mesh.triangles = triangulos.ToArray ();
+        mesh.colors = colors.ToArray();
 		mesh.uv = uvs.ToArray ();
 		mesh.RecalculateBounds ();
 		mesh.RecalculateNormals ();
@@ -116,8 +113,26 @@ public class Chunck : MonoBehaviour {
         working = false;
 
         }
-       
-        public void AddCubeFront(int x, int y, int z, Block b)
+
+    public Block GetTheoreticalBlock(Vector3 pos)
+    {
+        Random.seed = seed;
+        Vector3 offset = new Vector3(Random.value * 100000, Random.value * 100000, Random.value * 100000);
+        float noiseX = Mathf.Abs((float)(pos.x +  offset.x) / 20);
+        float noiseY = Mathf.Abs((float)(pos.y +  offset.y) / 20);
+        float noiseZ = Mathf.Abs((float)(pos.z +  offset.z) / 20);
+
+        float noiseValue = SimplexNoise.Noise.Generate(noiseX, noiseY, noiseZ);
+
+        noiseValue += (8 - (float)pos.y) / 5;
+        noiseValue /= (float)pos.y / 4f;
+
+        if (noiseValue > 0.2F)
+            return Block.getBlock("Dirt");
+        return null;
+    }
+
+    public void AddCubeFront(int x, int y, int z, Block b)
         {              
                 z++;
                
@@ -134,13 +149,15 @@ public class Chunck : MonoBehaviour {
                 uvs.Add(new Vector2((TextureOffset * b.TextureXSide) + TextureOffset, TextureOffset * b.TextureYSide));
                 uvs.Add(new Vector2((TextureOffset * b.TextureXSide) + TextureOffset, (TextureOffset * b.TextureYSide) + TextureOffset));
                 uvs.Add(new Vector2(TextureOffset * b.TextureXSide, (TextureOffset * b.TextureYSide) + TextureOffset));
-               
+
+                //CalculateLightFront(x, y, z);
+
                 vertices.Add(new Vector3(x + 0, y + 0, z + 0)); // 1
                 vertices.Add(new Vector3(x + -1, y + 0, z + 0)); // 2
                 vertices.Add(new Vector3(x + -1, y + 1, z + 0)); // 3
                 vertices.Add(new Vector3(x + 0, y + 1, z + 0)); // 4
         }
-        public void AddCubeBack(int x, int y, int z, Block b)
+    public void AddCubeBack(int x, int y, int z, Block b)
         {               
                 int offset = 1;
                 triangulos.Add(1 - offset + vertices.Count);
@@ -155,13 +172,15 @@ public class Chunck : MonoBehaviour {
                 uvs.Add(new Vector2((TextureOffset * b.TextureXSide) + TextureOffset, TextureOffset * b.TextureYSide));
                 uvs.Add(new Vector2((TextureOffset * b.TextureXSide) + TextureOffset, (TextureOffset * b.TextureYSide) + TextureOffset));
                 uvs.Add(new Vector2(TextureOffset * b.TextureXSide, (TextureOffset * b.TextureYSide) + TextureOffset));
-               
+
+                //CalculateLightBack(x, y, z);
+
                 vertices.Add(new Vector3(x + 0, y + 0, z + 0)); // 1
                 vertices.Add(new Vector3(x + -1, y + 0, z + 0)); // 2
                 vertices.Add(new Vector3(x + -1, y + 1, z + 0)); // 3
                 vertices.Add(new Vector3(x + 0, y + 1, z + 0)); // 4
         }
-        public void AddCubeTop(int x, int y, int z, Block b)
+    public void AddCubeTop(int x, int y, int z, Block b)
         {              
                 int offset = 1;
                 triangulos.Add(1 - offset + vertices.Count);
@@ -176,13 +195,15 @@ public class Chunck : MonoBehaviour {
                 uvs.Add(new Vector2((TextureOffset * b.TextureX) + TextureOffset, TextureOffset * b.TextureY));
                 uvs.Add(new Vector2((TextureOffset * b.TextureX) + TextureOffset, (TextureOffset * b.TextureY) + TextureOffset));
                 uvs.Add(new Vector2(TextureOffset * b.TextureX, (TextureOffset * b.TextureY) + TextureOffset));
-               
+
+                //CalculateLightTop(x, y, z);
+
                 vertices.Add(new Vector3(x + 0, y + 1, z + 0)); // 1
                 vertices.Add(new Vector3(x - 1, y + 1, z + 0)); // 2
                 vertices.Add(new Vector3(x - 1, y + 1, z + 1)); // 3
                 vertices.Add(new Vector3(x + 0, y + 1, z + 1)); // 4
         }
-        public void AddCubeBottom(int x, int y, int z, Block b)
+    public void AddCubeBottom(int x, int y, int z, Block b)
         {              
                 y--;
                
@@ -199,13 +220,15 @@ public class Chunck : MonoBehaviour {
                 uvs.Add(new Vector2((TextureOffset * b.TextureXBottom) + TextureOffset, TextureOffset * b.TextureYBottom));
                 uvs.Add(new Vector2((TextureOffset * b.TextureXBottom) + TextureOffset, (TextureOffset * b.TextureYBottom) + TextureOffset));
                 uvs.Add(new Vector2(TextureOffset * b.TextureXBottom, (TextureOffset * b.TextureYBottom) + TextureOffset));
-               
+
+                //CalculateLightTop(x, y, z);
+
                 vertices.Add(new Vector3(x + 0, y + 1, z + 0)); // 1
                 vertices.Add(new Vector3(x - 1, y + 1, z + 0)); // 2
                 vertices.Add(new Vector3(x - 1, y + 1, z + 1)); // 3
                 vertices.Add(new Vector3(x + 0, y + 1, z + 1)); // 4
         }
-        public void AddCubeRight(int x, int y, int z, Block b)
+    public void AddCubeRight(int x, int y, int z, Block b)
         {               
                 int offset = 1;
                 triangulos.Add(1 - offset + vertices.Count);
@@ -220,13 +243,15 @@ public class Chunck : MonoBehaviour {
                 uvs.Add(new Vector2((TextureOffset * b.TextureXSide) + TextureOffset, TextureOffset * b.TextureYSide));
                 uvs.Add(new Vector2((TextureOffset * b.TextureXSide) + TextureOffset, (TextureOffset * b.TextureYSide) + TextureOffset));
                 uvs.Add(new Vector2(TextureOffset * b.TextureXSide, (TextureOffset * b.TextureYSide) + TextureOffset));
-               
+
+                //CalculateLightRight(x, y, z);
+
                 vertices.Add(new Vector3(x + 0, y + 0, z + 0)); // 1
                 vertices.Add(new Vector3(x - 0, y + 0, z + 1)); // 2
                 vertices.Add(new Vector3(x - 0, y + 1, z + 1)); // 3
                 vertices.Add(new Vector3(x + 0, y + 1, z + 0)); // 4
         }
-        public void AddCubeLeft(int x, int y, int z, Block b)
+    public void AddCubeLeft(int x, int y, int z, Block b)
         {              
                 x--;
                
@@ -243,14 +268,152 @@ public class Chunck : MonoBehaviour {
                 uvs.Add(new Vector2((TextureOffset * b.TextureXSide) + TextureOffset, TextureOffset * b.TextureYSide));
                 uvs.Add(new Vector2((TextureOffset * b.TextureXSide) + TextureOffset, (TextureOffset * b.TextureYSide) + TextureOffset));
                 uvs.Add(new Vector2(TextureOffset * b.TextureXSide, (TextureOffset * b.TextureYSide) + TextureOffset));
-               
+
+                //CalculateLightLeft(x, y, z);
+
                 vertices.Add(new Vector3(x + 0, y + 0, z + 0)); // 1
                 vertices.Add(new Vector3(x - 0, y + 0, z + 1)); // 2
                 vertices.Add(new Vector3(x - 0, y + 1, z + 1)); // 3
                 vertices.Add(new Vector3(x + 0, y + 1, z + 0)); // 4
         }
-       
-        bool isBlockTransparent(int x, int y, int z){
+
+  /*  void CalculateLightTop(int x, int y, int z)
+    {
+        int index = colors.Count;
+
+        Block b = getBlock(x, y, z);
+        if (b == null)
+            b = new Block();
+
+        colors.Add(Color.white);
+        colors.Add(Color.white);
+        colors.Add(Color.white);
+        colors.Add(Color.white);
+
+        {
+            if (!isBlockTransparent(x - 1, y + 1, z))
+            {
+                colors[index + 2] = Color.gray;
+                colors[index + 1] = Color.gray;
+            }
+
+            if (!isBlockTransparent(x + 1, y + 1, z))
+            {
+                colors[index + 0] = Color.gray;
+                colors[index + 3] = Color.gray;
+            }
+
+            if (!isBlockTransparent(x, y + 1, z - 1))
+            {
+                colors[index + 1] = Color.gray;
+                colors[index + 0] = Color.gray;
+            }
+
+            if (!isBlockTransparent(x, y + 1, z + 1))
+            {
+                colors[index + 2] = Color.gray;
+                colors[index + 3] = Color.gray;
+            }
+
+            if (!isBlockTransparent(x + 1, y + 1, z + 1))
+            {
+                colors[index + 3] = Color.gray;
+            }
+
+            if (!isBlockTransparent(x - 1, y + 1, z - 1))
+            {
+                colors[index + 1] = Color.gray;
+            }
+
+            if (!isBlockTransparent(x - 1, y + 1, z + 1))
+            {
+                colors[index + 2] = Color.gray;
+            }
+
+            if (!isBlockTransparent(x + 1, y + 1, z - 1))
+            {
+                colors[index + 0] = Color.gray;
+            }
+        }
+    }
+    void CalculateLightRight(int x, int y, int z)
+    {
+        Block b = getBlock(x, y, z);
+        int index = colors.Count;
+
+        colors.Add(b.BlockColor);
+        colors.Add(b.BlockColor);
+        colors.Add(b.BlockColor);
+        colors.Add(b.BlockColor);
+
+        //SideShadows
+        {
+            if (!isBlockTransparent(x + 1, y - 1, z) && isBlockTransparent(x + 1, y, z))
+            {
+                colors[index + 0] = Color.gray;
+                colors[index + 1] = Color.gray;
+            }
+        }
+    }
+    void CalculateLightLeft(int x, int y, int z)
+    {
+        Block b = getBlock(x, y, z);
+        int index = colors.Count;
+
+        colors.Add(Color.white);
+        colors.Add(b.BlockColor);
+        colors.Add(b.BlockColor);
+        colors.Add(b.BlockColor);
+
+        //SideShadows
+        {
+            if (!isBlockTransparent(x - 1, y - 1, z) && isBlockTransparent(x, y, z))
+            {
+                colors[index + 0] = Color.gray;
+                colors[index + 1] = Color.gray;
+            }
+        }
+    }
+    void CalculateLightBack(int x, int y, int z)
+    {
+        Block b = getBlock(x, y, z);
+        int index = colors.Count;
+
+        colors.Add(b.BlockColor);
+        colors.Add(b.BlockColor);
+        colors.Add(b.BlockColor);
+        colors.Add(b.BlockColor);
+
+        //SideShadows
+        {
+            if (!isBlockTransparent(x, y - 1, z - 1) && isBlockTransparent(x, y, z - 1))
+            {
+                colors[index + 0] = Color.gray;
+                colors[index + 1] = Color.gray;
+            }
+        }
+    }
+    void CalculateLightFront(int x, int y, int z)
+    {
+        Block b = getBlock(x, y, z);
+        int index = colors.Count;
+
+        colors.Add(b.BlockColor);
+        colors.Add(b.BlockColor);
+        colors.Add(b.BlockColor);
+        colors.Add(b.BlockColor);
+
+        //SideShadows
+        {
+            if (!isBlockTransparent(x, y - 1, z + 1) && isBlockTransparent(x, y, z))
+            {
+                colors[index + 0] = Color.gray;
+                colors[index + 1] = Color.gray;
+            }
+        }
+    } */
+
+    bool isBlockTransparent(int x, int y, int z){
                 if(x >= Width || y >= Height || z >= Width || x < 0 || y < 0 || z < 0)
                         return true;
                
@@ -259,8 +422,16 @@ public class Chunck : MonoBehaviour {
                
                 return false;
         }
-       
-	public static Chunck GetChunck(int x, int y, int z)
+
+    Block getBlock(int x, int y, int z)
+    {
+        if (x >= Width || y >= Height || z >= Width || x < 0 || y < 0 || z < 0)
+            return null;
+
+            return map[x, y, z];
+    }
+
+    public static Chunck GetChunck(int x, int y, int z)
 	{
 		for (int i = 0; i < Chuncks.Count; i++ )
 		{
