@@ -10,12 +10,12 @@ public class Chunck : MonoBehaviour {
 
 	public Block[, ,] map;
 	public static int Width = 35, Height = 10;
-    public static bool working = false;
+    	public static bool working = false;
 	public static List<Chunck> Chuncks = new List<Chunck> ();
-    List<Color> colors = new List<Color>();
-    public Color shadowsColors;
-    public static int seed = 505;
-    bool ready = false;
+    	List<Color> colors = new List<Color>();
+    	public Color shadowsColors;
+    	public static int seed = 505;
+    	bool ready = false;
 	List<Vector3> vertices = new List<Vector3> ();
 	List<int> triangulos = new List<int> ();
 	List<Vector2> uvs = new List<Vector2>();
