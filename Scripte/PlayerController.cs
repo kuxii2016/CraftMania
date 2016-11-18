@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using System.Collections;
 
 public class PlayerController : MonoBehaviour {
@@ -6,14 +6,9 @@ public class PlayerController : MonoBehaviour {
 	public GameObject chunckPrefab;
 	public int viewRange = 30;
 
-	void Start () {
-	
-	}
-	
-
 	void Update () 
 	{
-		for (float x = transform.position.z - viewRange; x < transform.position.x + viewRange; x += Chunck.Width) 
+		for (float x = transform.position.x - viewRange; x < transform.position.x + viewRange; x += Chunck.Width) 
 		{
 			for (float z = transform.position.z - viewRange; z < transform.position.z + viewRange; z += Chunck.Width) 
 			{
