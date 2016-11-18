@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
  
@@ -75,24 +75,31 @@ public class Chunck : MonoBehaviour {
 				{
 					if (map [x, y, z] != null) 
 					{
-						if (isBlockTransparent (x, y, z + 1))
-							AddCubeFront (x, y, z, map [x, y, z]);
-                         
+                        if (isBlockTransparent(x, y, z + 1))
+                        {
+                            AddCubeFront(x, y, z, map[x, y, z]);
+                        }
 						if (isBlockTransparent (x, y, z - 1))
-							AddCubeBack (x, y, z, map [x, y, z]);
-                           
-						if (isBlockTransparent (x, y + 1, z))
-							AddCubeTop (x, y, z, map [x, y, z]);
-                                               
-						if (isBlockTransparent (x, y - 1, z))
-							AddCubeBottom (x, y, z, map [x, y, z]);
-                                                
-						if (isBlockTransparent (x + 1, y, z))
-							AddCubeRight (x, y, z, map [x, y, z]);
-                                                
-						if (isBlockTransparent (x - 1, y, z))
-							AddCubeLeft (x, y, z, map [x, y, z]);
-					}
+                        {
+                            AddCubeBack (x, y, z, map [x, y, z]);
+                        }
+                        if (isBlockTransparent (x, y + 1, z))
+                        {
+                            AddCubeTop (x, y, z, map [x, y, z]);
+                        }
+                        if (isBlockTransparent (x, y - 1, z))
+                        {
+                            AddCubeBottom (x, y, z, map [x, y, z]);
+                        }
+                        if (isBlockTransparent (x + 1, y, z))
+                        {
+                            AddCubeRight (x, y, z, map [x, y, z]);
+                        }
+                        if (isBlockTransparent (x - 1, y, z))
+                        {
+                            AddCubeLeft (x, y, z, map [x, y, z]);
+                        }
+                    }
 				}
 			}
 		}
