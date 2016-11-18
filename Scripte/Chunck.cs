@@ -13,6 +13,7 @@ public class Chunck : MonoBehaviour {
     public static bool working = false;
 	public static List<Chunck> Chuncks = new List<Chunck> ();
     List<Color> colors = new List<Color>();
+    public Color shadowsColors;
     public static int seed = 505;
     bool ready = false;
 	List<Vector3> vertices = new List<Vector3> ();
@@ -60,8 +61,7 @@ public class Chunck : MonoBehaviour {
 	}
        
 	public IEnumerator CalculateMesh()
-	{
-               
+	{             
 		for (int x = 0; x < Width; x++) 
 		{
 			for (int y = 0; y < Height; y++) 
@@ -277,151 +277,151 @@ public class Chunck : MonoBehaviour {
                 vertices.Add(new Vector3(x + 0, y + 1, z + 0)); // 4
         }
 
-  /*  void CalculateLightTop(int x, int y, int z)
+      void CalculateLightTop(int x, int y, int z, Block b)
+      {
+          int index = colors.Count;
+
+          colors.Add(b.BlockColor);
+          colors.Add(b.BlockColor);
+          colors.Add(b.BlockColor);
+          colors.Add(b.BlockColor);
+
+          {
+              if (!isBlockTransparent(x - 1, y + 1, z))
+              {
+                  colors[index + 2] = shadowsColors;
+                  colors[index + 1] = shadowsColors;
+              }
+
+              if (!isBlockTransparent(x + 1, y + 1, z))
+              {
+                  colors[index + 0] = shadowsColors;
+                  colors[index + 3] = shadowsColors;
+              }
+
+              if (!isBlockTransparent(x, y + 1, z - 1))
+              {
+                  colors[index + 1] = shadowsColors;
+                  colors[index + 0] = shadowsColors;
+              }
+
+              if (!isBlockTransparent(x, y + 1, z + 1))
+              {
+                  colors[index + 2] = shadowsColors;
+                  colors[index + 3] = shadowsColors;
+              }
+
+              if (!isBlockTransparent(x + 1, y + 1, z + 1))
+              {
+                  colors[index + 3] = shadowsColors;
+              }
+
+              if (!isBlockTransparent(x - 1, y + 1, z - 1))
+              {
+                  colors[index + 1] = shadowsColors;
+              }
+
+              if (!isBlockTransparent(x - 1, y + 1, z + 1))
+              {
+                  colors[index + 2] = shadowsColors;
+              }
+
+              if (!isBlockTransparent(x + 1, y + 1, z - 1))
+              {
+                  colors[index + 0] = shadowsColors;
+              }
+          }
+      }
+      void CalculateLightRight(int x, int y, int z, Block b)
+      {
+
+          int index = colors.Count;
+
+          colors.Add(b.BlockColor);
+          colors.Add(b.BlockColor);
+          colors.Add(b.BlockColor);
+          colors.Add(b.BlockColor);
+
+          //SideShadows
+          {
+              if (!isBlockTransparent(x + 1, y - 1, z) && isBlockTransparent(x + 1, y, z))
+              {
+                  colors[index + 0] = shadowsColors;
+                  colors[index + 1] = shadowsColors;
+              }
+          }
+      }
+      void CalculateLightLeft(int x, int y, int z, Block b)
+      {
+ 
+          int index = colors.Count;
+
+          colors.Add(b.BlockColor);
+          colors.Add(b.BlockColor);
+          colors.Add(b.BlockColor);
+          colors.Add(b.BlockColor);
+
+          //SideShadows
+          {
+              if (!isBlockTransparent(x - 1, y - 1, z) && isBlockTransparent(x, y, z))
+              {
+                  colors[index + 0] = shadowsColors;
+                  colors[index + 1] = shadowsColors;
+              }
+          }
+      }
+      void CalculateLightBack(int x, int y, int z, Block b)
+      {
+ 
+          int index = colors.Count;
+
+          colors.Add(b.BlockColor);
+          colors.Add(b.BlockColor);
+          colors.Add(b.BlockColor);
+          colors.Add(b.BlockColor);
+
+          //SideShadows
+          {
+              if (!isBlockTransparent(x, y - 1, z - 1) && isBlockTransparent(x, y, z - 1))
+              {
+                  colors[index + 0] = shadowsColors;
+                  colors[index + 1] = shadowsColors;
+              }
+          }
+      }
+      void CalculateLightFront(int x, int y, int z, Block b)
+      {
+
+          int index = colors.Count;
+
+          colors.Add(b.BlockColor);
+          colors.Add(b.BlockColor);
+          colors.Add(b.BlockColor);
+          colors.Add(b.BlockColor);
+
+          //SideShadows
+          {
+              if (!isBlockTransparent(x, y - 1, z + 1) && isBlockTransparent(x, y, z))
+              {
+                  colors[index + 0] = shadowsColors;
+                  colors[index + 1] = shadowsColors;
+              }
+          }
+      } 
+
+    bool isBlockTransparent(int x, int y, int z)
     {
-        int index = colors.Count;
-
-        Block b = getBlock(x, y, z);
-        if (b == null)
-            b = new Block();
-
-        colors.Add(Color.white);
-        colors.Add(Color.white);
-        colors.Add(Color.white);
-        colors.Add(Color.white);
-
+        if (x >= Width || y >= Height || z >= Width || x < 0 || y < 0 || z < 0)
         {
-            if (!isBlockTransparent(x - 1, y + 1, z))
-            {
-                colors[index + 2] = Color.gray;
-                colors[index + 1] = Color.gray;
-            }
-
-            if (!isBlockTransparent(x + 1, y + 1, z))
-            {
-                colors[index + 0] = Color.gray;
-                colors[index + 3] = Color.gray;
-            }
-
-            if (!isBlockTransparent(x, y + 1, z - 1))
-            {
-                colors[index + 1] = Color.gray;
-                colors[index + 0] = Color.gray;
-            }
-
-            if (!isBlockTransparent(x, y + 1, z + 1))
-            {
-                colors[index + 2] = Color.gray;
-                colors[index + 3] = Color.gray;
-            }
-
-            if (!isBlockTransparent(x + 1, y + 1, z + 1))
-            {
-                colors[index + 3] = Color.gray;
-            }
-
-            if (!isBlockTransparent(x - 1, y + 1, z - 1))
-            {
-                colors[index + 1] = Color.gray;
-            }
-
-            if (!isBlockTransparent(x - 1, y + 1, z + 1))
-            {
-                colors[index + 2] = Color.gray;
-            }
-
-            if (!isBlockTransparent(x + 1, y + 1, z - 1))
-            {
-                colors[index + 0] = Color.gray;
-            }
-        }
-    }
-    void CalculateLightRight(int x, int y, int z)
-    {
-        Block b = getBlock(x, y, z);
-        int index = colors.Count;
-
-        colors.Add(b.BlockColor);
-        colors.Add(b.BlockColor);
-        colors.Add(b.BlockColor);
-        colors.Add(b.BlockColor);
-
-        //SideShadows
-        {
-            if (!isBlockTransparent(x + 1, y - 1, z) && isBlockTransparent(x + 1, y, z))
-            {
-                colors[index + 0] = Color.gray;
-                colors[index + 1] = Color.gray;
-            }
-        }
-    }
-    void CalculateLightLeft(int x, int y, int z)
-    {
-        Block b = getBlock(x, y, z);
-        int index = colors.Count;
-
-        colors.Add(Color.white);
-        colors.Add(b.BlockColor);
-        colors.Add(b.BlockColor);
-        colors.Add(b.BlockColor);
-
-        //SideShadows
-        {
-            if (!isBlockTransparent(x - 1, y - 1, z) && isBlockTransparent(x, y, z))
-            {
-                colors[index + 0] = Color.gray;
-                colors[index + 1] = Color.gray;
-            }
-        }
-    }
-    void CalculateLightBack(int x, int y, int z)
-    {
-        Block b = getBlock(x, y, z);
-        int index = colors.Count;
-
-        colors.Add(b.BlockColor);
-        colors.Add(b.BlockColor);
-        colors.Add(b.BlockColor);
-        colors.Add(b.BlockColor);
-
-        //SideShadows
-        {
-            if (!isBlockTransparent(x, y - 1, z - 1) && isBlockTransparent(x, y, z - 1))
-            {
-                colors[index + 0] = Color.gray;
-                colors[index + 1] = Color.gray;
-            }
-        }
-    }
-    void CalculateLightFront(int x, int y, int z)
-    {
-        Block b = getBlock(x, y, z);
-        int index = colors.Count;
-
-        colors.Add(b.BlockColor);
-        colors.Add(b.BlockColor);
-        colors.Add(b.BlockColor);
-        colors.Add(b.BlockColor);
-
-        //SideShadows
-        {
-            if (!isBlockTransparent(x, y - 1, z + 1) && isBlockTransparent(x, y, z))
-            {
-                colors[index + 0] = Color.gray;
-                colors[index + 1] = Color.gray;
-            }
-        }
-    } */
-
-    bool isBlockTransparent(int x, int y, int z){
-                if(x >= Width || y >= Height || z >= Width || x < 0 || y < 0 || z < 0)
-                        return true;
-               
-                if(map[x, y, z] == null)
-                        return true;
-               
+            if (GetTheoreticalBlock(transform.position + new Vector3(x, y, z)) == null)
+                return true;
+            else
                 return false;
         }
+        if (map[x, y, z] == null)
+            return true;
+        return false;
+    }
 
     Block getBlock(int x, int y, int z)
     {
