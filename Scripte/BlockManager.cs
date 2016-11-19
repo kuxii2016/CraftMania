@@ -1,8 +1,8 @@
-﻿using UnityEngine;
+using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
- 
-public class BlockManager : MonoBehaviour
+
+public class BlockList : MonoBehaviour
 {
     public static List<Block> Blocks = new List<Block>();
     public Texture DirtT;
