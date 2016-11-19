@@ -64,26 +64,32 @@ public class PlayerInventory : MonoBehaviour {
                     MoveItem(x, y);
                     break;
                 }
+                if (slotPos.Contains(e.mousePosition) && e.type == EventType.mouseDown && e.button == 1)
+                {
+                    SplitItem(x, y);
+                    break;
+                }
             }
         }
         ShowDraggingItem(e, space);
     }
+
     void ShowDraggingItem(Event e, float space)
     {
         if (draggingItem != null)
         {
             GUI.DrawTexture(new Rect(e.mousePosition.x, e.mousePosition.y, SlotBackground.width - space, SlotBackground.height - space), draggingItem.ItemView);
-            GUI.Label(new Rect(e.mousePosition.x + (SlotBackground.width - space) / 2, e.mousePosition.y + (SlotBackground.height - space) / 2, SlotBackground.width - space, SlotBackground.height - space), draggingItemsNum.ToString());
+            GUI.Label(new Rect(e.mousePosition.x + (SlotBackground.width - space) / 2, e.mousePosition.y + (SlotBackground.height - space) / 2, SlotBackground.width - space, SlotBackground.height - space), draggingItemNum.ToString());
         }
     }
 
     Block draggingItem;
-    int draggingItemsNum;
+    int draggingItemNum;
     void DragItem(int x, int y)
     {
         if (draggingItem != null) return;
         draggingItem = InventoryItems[x, y];
-        draggingItemsNum = InventoryNum[x, y];
+        draggingItemNum = InventoryNum[x, y];
 
         InventoryItems[x, y] = null;
         InventoryNum[x, y] = 0;
@@ -98,28 +104,67 @@ public class PlayerInventory : MonoBehaviour {
         if (bloco == null)
         {
             InventoryItems[x, y] = draggingItem;
-            InventoryNum[x, y] = draggingItemsNum;
+            InventoryNum[x, y] = draggingItemNum;
 
             draggingItem = null;
-            draggingItemsNum = 0;
+            draggingItemNum = 0;
         }
         else if (bloco == draggingItem )
         {
-            if(blocoN + draggingItemsNum > bloco.BlockMaxStack)
+            if(blocoN + draggingItemNum > bloco.BlockMaxStack)
             {
-                int rest = InventoryNum[x, y] + draggingItemsNum - bloco.BlockMaxStack;
+                int rest = InventoryNum[x, y] + draggingItemNum - bloco.BlockMaxStack;
                 InventoryNum[x, y] = bloco.BlockMaxStack;
-                draggingItemsNum = rest;
+                draggingItemNum = rest;
             }
             else
             {
-                InventoryNum[x, y] += draggingItemsNum;
+                InventoryNum[x, y] += draggingItemNum;
                 draggingItem = null;
-                draggingItemsNum = 0;
+                draggingItemNum = 0;
             }
         }
 
     }
+
+    void SplitItem(int x, int y)
+    {
+        Block bloco = InventoryItems[x, y];
+        int blocoN = InventoryNum[x, y];
+
+        if (draggingItem != null && bloco == draggingItem)
+        {
+            if (InventoryNum[x, y] + 1 > bloco.BlockMaxStack)
+            {
+
+            }
+            else
+            {
+                InventoryNum[x, y]++;
+                draggingItemNum--;
+            }
+        }
+        else if (draggingItem == null)
+        {
+            if (blocoN / 2 < 0)
+                return;
+            draggingItem = bloco;
+            draggingItemNum = blocoN / 2;
+            InventoryNum[x, y] -= draggingItemNum;
+        }
+        else if (draggingItem != null)
+        {
+            InventoryItems[x, y] = draggingItem;
+            InventoryNum[x, y]++;
+            draggingItemNum--;
+        }
+        if (draggingItemNum <= 0)
+        {
+            draggingItem = null;
+        }
+    }
+    
+    
 
     public void AddItem(Block b, int num)
     {
