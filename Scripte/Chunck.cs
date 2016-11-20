@@ -1,15 +1,21 @@
 using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
+using LibNoise;
+using System.Threading;
+using System.IO;
 
 [RequireComponent(typeof(MeshFilter))]
 [RequireComponent(typeof(MeshCollider))]
 [RequireComponent(typeof(MeshRenderer))]
-
 public class Chunck : MonoBehaviour
 {
-    public Block[, ,] map;
-    public static int Width = 30, Height = 7;
+    public Block[,,] map;
+
+    public bool[,,] lightMap;
+    public int[,,] lightValue; //0 - 16
+
+    public static int Width = 20, Height = 20;
 
     public static List<Transform> Chuncks = new List<Transform>();
 
@@ -18,10 +24,7 @@ public class Chunck : MonoBehaviour
     Chunck back;
     Chunck front;
     Chunck bottom;
-    Chunck bottom2;
     Chunck top;
-
-    public GameObject chunckPrefab;
 
     List<Vector3> vertices = new List<Vector3>();
     List<int> triangulos = new List<int>();
@@ -38,100 +41,359 @@ public class Chunck : MonoBehaviour
     public bool ready = false;
     public bool generatedMap = false;
 
-    bool once = true;
+    public bool iamWorking = false;
+
     void Start()
     {
+
         Chuncks.Add(this.transform);
+        pos = transform.position;
 
         if (Time.time < 1)
         {
             StartFunction();
         }
     }
+
+    GameObject pl;
+    Vector3 pos;
+    public static bool spawningChuncksS = false;
+    public bool IamspawningChuncksS = false;
+
     void Update()
     {
-        if (working == false && ready == false)
+        if (pl == null)
+            pl = GameObject.FindGameObjectWithTag("Player");
+
+        if (pl != null)
         {
-            ready = true;
-            StartFunction();
-        }
-    }
-    public void StartFunction()
-    {
-        mesh = new Mesh();
-        map = new Block[Width, Height, Width];
-
-        StartCoroutine(CalculateMap());
-    }
-
-    public static int seed = 505;
-
-    public IEnumerator CalculateMap()
-    {
-        working = true;
-
-        Block b = null;
-        bool render = false;
-        for (int x = 0; x < Width; x++)
-        {
-            for (int y = 0; y < Height; y++)
+            if (Vector3.Distance(this.transform.position, pl.transform.position) > PlayerController.viewRange)
             {
-                for (int z = 0; z < Width; z++)
-                {
-                    Block bloco = GetTheoreticalBlock(transform.position + new Vector3(x, y, z));
-                    if( x == 0 && y == 0 && z == 0)
-                        b = bloco;
+                Chuncks.Remove(this.transform);
+                if (iamWorking == true)
+                    working = false;
+                if (IamspawningChuncksS == true)
+                    spawningChuncks = false;
+                Destroy(this.gameObject);
+            }
+        }
 
-                    if (bloco != null && bloco.BlockName == "Dirt")
+        if (Time.time < 1f || spawningChuncksS == true || spawningChuncks == true) return;
+        if (Vector3.Distance(pos, pl.transform.position) > PlayerController.viewRange - Width) return;
+
+        if (left == null || right == null || front == null || back == null ||
+        bottom == null || top == null)
+        {
+            if (left == null)
+            {
+                int x = Mathf.FloorToInt((transform.position.x - Chunck.Width) / Chunck.Width) * Chunck.Width;
+                int y = Mathf.FloorToInt((transform.position.y) / Chunck.Height) * Chunck.Height;
+                int z = Mathf.FloorToInt((transform.position.z) / Chunck.Width) * Chunck.Width;
+
+                if (Vector3.Distance(new Vector3(x, y, z), pl.transform.position) <= PlayerController.viewRange)
+                {
+                    if (ChunckExists(x, y, z))
                     {
-                        if(GetTheoreticalBlock(transform.position + new Vector3(x, y + 1, z)) == null)
-                            map[x, y, z] = BlockList.GetBlock("Grass");
-                        else
-                            map[x, y, z] = bloco;
+                        left = GetChunck(x, y, z);
                     }
                     else
                     {
-                        map[x, y, z] = bloco;
+                        StartCoroutine(SpawnChunck(new Vector3(x, y, z)));
                     }
+                }
+            }
+            if (right == null)
+            {
+                int x = Mathf.FloorToInt((transform.position.x + Chunck.Width) / Chunck.Width) * Chunck.Width;
+                int y = Mathf.FloorToInt((transform.position.y) / Chunck.Height) * Chunck.Height;
+                int z = Mathf.FloorToInt((transform.position.z) / Chunck.Width) * Chunck.Width;
 
-                    if (render == false)
-                    if (map[x, y, z] != b)
-                        render = true;
+                if (Vector3.Distance(new Vector3(x, y, z), pl.transform.position) <= PlayerController.viewRange)
+                {
+                    if (ChunckExists(x, y, z))
+                    {
+                        right = GetChunck(x, y, z);
+                    }
+                    else
+                    {
+                        StartCoroutine(SpawnChunck(new Vector3(x, y, z)));
+                    }
+                }
+            }
+            if (top == null)
+            {
+                int x = Mathf.FloorToInt((transform.position.x) / Chunck.Width) * Chunck.Width;
+                int y = Mathf.FloorToInt((transform.position.y + Chunck.Height) / Chunck.Height) * Chunck.Height;
+                int z = Mathf.FloorToInt((transform.position.z) / Chunck.Width) * Chunck.Width;
+
+                if (Vector3.Distance(new Vector3(x, y, z), pl.transform.position) <= PlayerController.viewRange)
+                {
+                    if (ChunckExists(x, y, z))
+                    {
+                        top = GetChunck(x, y, z);
+                    }
+                    else
+                    {
+                        StartCoroutine(SpawnChunck(new Vector3(x, y, z)));
+                    }
+                }
+            }
+            if (bottom == null)
+            {
+                int x = Mathf.FloorToInt((transform.position.x) / Chunck.Width) * Chunck.Width;
+                int y = Mathf.FloorToInt((transform.position.y - Chunck.Height) / Chunck.Height) * Chunck.Height;
+                int z = Mathf.FloorToInt((transform.position.z) / Chunck.Width) * Chunck.Width;
+
+                if (Vector3.Distance(new Vector3(x, y, z), pl.transform.position) <= PlayerController.viewRange)
+                {
+                    if (ChunckExists(x, y, z))
+                    {
+                        bottom = GetChunck(x, y, z);
+                    }
+                    else
+                    {
+                        StartCoroutine(SpawnChunck(new Vector3(x, y, z)));
+                    }
+                }
+            }
+            if (back == null)
+            {
+                int x = Mathf.FloorToInt((transform.position.x) / Chunck.Width) * Chunck.Width;
+                int y = Mathf.FloorToInt((transform.position.y) / Chunck.Height) * Chunck.Height;
+                int z = Mathf.FloorToInt((transform.position.z - Chunck.Width) / Chunck.Width) * Chunck.Width;
+
+                if (Vector3.Distance(new Vector3(x, y, z), pl.transform.position) <= PlayerController.viewRange)
+                {
+                    if (ChunckExists(x, y, z))
+                    {
+                        back = GetChunck(x, y, z);
+                    }
+                    else
+                    {
+                        StartCoroutine(SpawnChunck(new Vector3(x, y, z)));
+                    }
+                }
+            }
+            if (front == null)
+            {
+                int x = Mathf.FloorToInt((transform.position.x) / Chunck.Width) * Chunck.Width;
+                int y = Mathf.FloorToInt((transform.position.y) / Chunck.Height) * Chunck.Height;
+                int z = Mathf.FloorToInt((transform.position.z + Chunck.Width) / Chunck.Width) * Chunck.Width;
+
+                if (Vector3.Distance(new Vector3(x, y, z), pl.transform.position) <= PlayerController.viewRange)
+                {
+                    if (ChunckExists(x, y, z))
+                    {
+                        front = GetChunck(x, y, z);
+                    }
+                    else
+                    {
+                        StartCoroutine(SpawnChunck(new Vector3(x, y, z)));
+                    }
                 }
             }
         }
-        generatedMap = true;
+    }
+
+    public void StartFunction()
+    {
+        mesh = new Mesh();
+        StartCoroutine(CalculateMap());
+    }
+
+    public static bool spawningChuncks = false;
+
+    public IEnumerator SpawnChunck(Vector3 pos)
+    {
+        spawningChuncks = true;
+
+        GameObject.Instantiate(PlayerController.ChunckPrefab, pos, Quaternion.identity);
 
         yield return 0;
 
-        if (render)
-            StartCoroutine(CalculateMesh());
+        spawningChuncks = false;
+    }
+
+    public static Thread tmap;
+
+    public IEnumerator CalculateMap()
+    {
+        if (tmap != null && tmap.IsAlive)
+        {
+
+        }
         else
         {
-            ready = true;
-            working = false;
+            bool createFile = true;
+            if (System.IO.File.Exists(Application.dataPath + "\\" + GameManager.worldName + "\\" + pos.ToString()))
+            {
+                createFile = false;
+            }
+            else
+            {
+
+            }
+
+            working = true;
+            iamWorking = true;
+
+            if (createFile == false)
+            {
+                lightMap = new bool[Width, Height, Width];
+                map = new Block[Width, Height, Width];
+
+                string[] linhas = File.ReadAllLines(Application.dataPath + "\\" + GameManager.worldName + "\\" + pos.ToString());
+
+                int i = 0;
+                for (int z = 0; z < Width; z++)
+                {
+                    for (int x = 0; x < Width; x++)
+                    {
+                        for (int y = 0; y < Height; y++)
+                        {
+                            int blockID = -1;
+
+                            blockID = int.Parse(linhas[i]);
+
+                            if (blockID == -1)
+                                map[x, y, z] = null;
+                            else
+                                map[x, y, z] = Block.getBlock(blockID);
+
+                            i++;
+                        }
+                    }
+                }
+            }
+            else if (createFile == true)
+            {
+                tmap = new Thread(CMap);
+                tmap.Start();
+
+                while (tmap.IsAlive)
+                {
+                    yield return 0;
+                }
+
+                if (!Directory.Exists(Application.dataPath + "\\" + GameManager.worldName))
+                {
+                    Directory.CreateDirectory(Application.dataPath + "\\" + GameManager.worldName);
+                }
+
+                if (!System.IO.File.Exists(Application.dataPath + "\\" + GameManager.worldName + "\\" + "seed"))
+                {
+                    StreamWriter f = File.CreateText(Application.dataPath + "\\" + GameManager.worldName + "\\" + "seed");
+                    f.Write(GameManager.seed);
+                    f.Close();
+                }
+
+                File.Create(Application.dataPath + "\\" + GameManager.worldName + "\\" + pos.ToString()).Close();
+                List<string> linhas = new List<string>();
+
+                TextWriter c = new StreamWriter(Application.dataPath + "\\" + GameManager.worldName + "\\" + pos.ToString());
+
+                for (int z = 0; z < Width; z++)
+                {
+                    for (int x = 0; x < Width; x++)
+                    {
+                        for (int y = 0; y < Height; y++)
+                        {
+                            if (map[x, y, z] == null)
+                                c.WriteLine("-1");
+                            //linhas.Add(-1 + ";");
+                            else
+                                c.WriteLine(map[x, y, z].BlockID);
+                            //linhas.Add(map[x,y,z].BlockID + ";");
+                        }
+                    }
+                }
+
+                c.Close();
+                //File.WriteAllLines(Application.dataPath + "\\" + pos.ToString(), linhas.ToArray());
+            }
+
+            tmap = null;
+
+            generatedMap = true;
+
+            yield return 0;
+
+            StartCoroutine(CalculateMesh());
         }
     }
+
+    public void CMap()
+    {
+        System.Random r = new System.Random();
+        working = true;
+
+        lightMap = new bool[Width, Height, Width];
+        map = new Block[Width, Height, Width];
+
+        for (int z = 0; z < Width; z++)
+        {
+            for (int x = 0; x < Width; x++)
+            {
+                for (int y = 0; y < Height; y++)
+                {
+                    Block bloco = GetTheoreticalBlock(pos + new Vector3(x, y, z));
+                    map[x, y, z] = bloco;
+
+                    if (map[x, y, z] == Block.getBlock("Dirt") && GetTheoreticalBlock(pos + new Vector3(x, y + 1, z)) == null)
+                    {
+                        map[x, y, z] = Block.getBlock("Grass");
+                    }
+                }
+            }
+        }
+    }
+
     public IEnumerator CalculateMesh()
     {
-        working = true;
         mesh = new Mesh();
+
+        tmap = new Thread(CMesh);
+        tmap.Start();
+
+        while (tmap.IsAlive)
+        {
+            yield return 0;
+        }
+
+        tmap = null;
+
+        mesh.vertices = vertices.ToArray();
+        mesh.SetTriangles(triangulos.ToArray(), 0);
+        mesh.colors = colors.ToArray();
+        mesh.RecalculateNormals();
+        mesh.uv = uvs.ToArray();
+
+        GetComponent<MeshCollider>().sharedMesh = mesh;
+        GetComponent<MeshFilter>().sharedMesh = mesh;
+
+        yield return new WaitForEndOfFrame();
+
+        ready = true;
+        working = false;
+        iamWorking = false;
+    }
+
+    public void CMesh()
+    {
         vertices.Clear();
         triangulos.Clear();
         colors.Clear();
         uvs.Clear();
 
-        for (int x = 0; x < Width; x++)
+        for (int z = 0; z < Width; z++)
         {
-            for (int y = 0; y < Height; y++)
+            for (int x = 0; x < Width; x++)
             {
-                for (int z = 0; z < Width; z++)
+                for (int y = 0; y < Height; y++)
                 {
+
                     if (map[x, y, z] != null)
                     {
-                        Vector3 worldPosition = new Vector3(x, y, z) + transform.position;
-                        if (Mathf.FloorToInt(worldPosition.y) < 1) continue;
-
                         if (InitialisBlockTransparent(x, y, z + 1))
                             AddCubeFront(x, y, z, map[x, y, z]);
                         if (InitialisBlockTransparent(x, y, z - 1))
@@ -148,21 +410,6 @@ public class Chunck : MonoBehaviour
                 }
             }
         }
-
-        mesh.vertices = vertices.ToArray();
-        mesh.triangles = triangulos.ToArray();
-        mesh.colors = colors.ToArray();
-        mesh.uv = uvs.ToArray();
-        mesh.RecalculateBounds();
-        mesh.RecalculateNormals();
-        mesh.Optimize();
-
-        GetComponent<MeshCollider>().sharedMesh = mesh;
-        GetComponent<MeshFilter>().sharedMesh = mesh;
-
-        yield return 0;
-        ready = true;
-        working = false;
     }
 
     public IEnumerator RecalculateMesh()
@@ -175,17 +422,15 @@ public class Chunck : MonoBehaviour
         triangulos.Clear();
         colors.Clear();
         uvs.Clear();
-
-        for (int x = 0; x < Width; x++)
+        for (int z = 0; z < Width; z++)
         {
-            for (int y = 0; y < Height; y++)
+            for (int x = 0; x < Width; x++)
             {
-                for (int z = 0; z < Width; z++)
+                for (int y = 0; y < Height; y++)
                 {
+
                     if (map[x, y, z] != null)
                     {
-                        Vector3 worldPosition = new Vector3(x, y, z) + transform.position;
-                        if (Mathf.FloorToInt(worldPosition.y) < 1) continue;
                         if (isBlockTransparent(x, y, z + 1))
                             AddCubeFront(x, y, z, map[x, y, z]);
                         if (isBlockTransparent(x, y, z - 1))
@@ -206,10 +451,8 @@ public class Chunck : MonoBehaviour
         mesh.vertices = vertices.ToArray();
         mesh.triangles = triangulos.ToArray();
         mesh.colors = colors.ToArray();
-        mesh.uv = uvs.ToArray();
-        mesh.RecalculateBounds();
         mesh.RecalculateNormals();
-        mesh.Optimize();
+        mesh.uv = uvs.ToArray();
 
         GetComponent<MeshCollider>().sharedMesh = mesh;
         GetComponent<MeshFilter>().sharedMesh = mesh;
@@ -220,30 +463,36 @@ public class Chunck : MonoBehaviour
         yield return 0;
     }
 
+    LibNoise.Generator.Perlin noise = new LibNoise.Generator.Perlin(1f, 1f, 1f, 8, GameManager.seed, QualityMode.High);
+
+    LibNoise.Generator.Perlin biome = new LibNoise.Generator.Perlin(0.1f, 2f, 0.5f, 1, GameManager.seed, QualityMode.High);
+
     public Block GetTheoreticalBlock(Vector3 pos)
     {
-        Random.seed = seed;
+        System.Random r = new System.Random(GameManager.seed);
 
-        Vector3 offset = new Vector3(Random.value * 100000, Random.value * 100000, Random.value * 100000);
+        Vector3 offset = new Vector3((float)r.NextDouble() * 100000, (float)r.NextDouble() * 100000, (float)r.NextDouble() * 100000);
 
-        float noiseX = Mathf.Abs((float)(pos.x + offset.x) / 20);
-        float noiseY = Mathf.Abs((float)(pos.y + offset.y) / 20);
-        float noiseZ = Mathf.Abs((float)(pos.z + offset.z) / 20);
+        double noiseX = (double)Mathf.Abs((float)(pos.x + offset.x) / 20);
+        double noiseY = (double)Mathf.Abs((float)(pos.y + offset.y) / 20);
+        double noiseZ = (double)Mathf.Abs((float)(pos.z + offset.z) / 20);
 
-        float noiseValue = SimplexNoise.Noise.Generate(noiseX, noiseY, noiseZ);
-        float cavernas = SimplexNoise.Noise.Generate(noiseX, Mathf.Abs((float)(pos.y + offset.y - 10) / 20), noiseZ);
+        double noiseValue = noise.GetValue(noiseX, noiseY, noiseZ);
+        double biomeValue = biome.GetValue(noiseX, 50, noiseZ);
 
         noiseValue += (200 - (float)pos.y) / 18f;
         noiseValue /= (float)pos.y / 8f;
 
-        cavernas /= (float)pos.y / 19f;
-        cavernas /= 2;
+        if (noiseValue > 0.5f)
+        {
+            if (noiseValue > 0.6f)
+                return Block.getBlock("Stone");
 
-        if (noiseValue > 0.2f)
-            return Block.getBlock("Dirt");
-
-        if (cavernas > 0.2f)
-            return null;
+            if (biomeValue > 0.1f)
+                return Block.getBlock("Sand");
+            else
+                return Block.getBlock("Dirt");
+        }
 
         return null;
     }
@@ -270,7 +519,7 @@ public class Chunck : MonoBehaviour
         uvs.Add(new Vector2((TextureOffset * b.TextureXSide) + TextureOffset, (TextureOffset * b.TextureYSide) + TextureOffset));
         uvs.Add(new Vector2(TextureOffset * b.TextureXSide, (TextureOffset * b.TextureYSide) + TextureOffset));
 
-        CalculateLightFront(x, y, z, b);
+        CalculateLightFront(x, y, z - 1, b);
 
         vertices.Add(new Vector3(x + 0, y + 0, z + 0)); // 1
         vertices.Add(new Vector3(x + -1, y + 0, z + 0)); // 2
@@ -351,7 +600,7 @@ public class Chunck : MonoBehaviour
         uvs.Add(new Vector2((TextureOffset * b.TextureXBottom) + TextureOffset, TextureOffset * b.TextureYBottom));
         uvs.Add(new Vector2((TextureOffset * b.TextureXBottom) + TextureOffset, (TextureOffset * b.TextureYBottom) + TextureOffset));
         uvs.Add(new Vector2(TextureOffset * b.TextureXBottom, (TextureOffset * b.TextureYBottom) + TextureOffset));
-        CalculateLightTop(x, y, z, b);
+        CalculateLightTop(x, y - 1, z, b);
         vertices.Add(new Vector3(x + 0, y + 1, z + 0)); // 1
         vertices.Add(new Vector3(x - 1, y + 1, z + 0)); // 2
         vertices.Add(new Vector3(x - 1, y + 1, z + 1)); // 3
@@ -387,7 +636,7 @@ public class Chunck : MonoBehaviour
     public void AddCubeLeft(int x, int y, int z, Block b)
     {
         //x = x + Mathf.FloorToInt(transform.position.x);
-       // y = y + Mathf.FloorToInt(transform.position.y);
+        // y = y + Mathf.FloorToInt(transform.position.y);
         //z = z + Mathf.FloorToInt(transform.position.z);
 
         x--;
@@ -405,7 +654,7 @@ public class Chunck : MonoBehaviour
         uvs.Add(new Vector2((TextureOffset * b.TextureXSide) + TextureOffset, TextureOffset * b.TextureYSide));
         uvs.Add(new Vector2((TextureOffset * b.TextureXSide) + TextureOffset, (TextureOffset * b.TextureYSide) + TextureOffset));
         uvs.Add(new Vector2(TextureOffset * b.TextureXSide, (TextureOffset * b.TextureYSide) + TextureOffset));
-        CalculateLightLeft(x, y, z, b);
+        CalculateLightLeft(x + 1, y, z, b);
         vertices.Add(new Vector3(x + 0, y + 0, z + 0)); // 1
         vertices.Add(new Vector3(x - 0, y + 0, z + 1)); // 2
         vertices.Add(new Vector3(x - 0, y + 1, z + 1)); // 3
@@ -416,6 +665,18 @@ public class Chunck : MonoBehaviour
     {
         int index = colors.Count;
 
+        Color colorToAdd = new Color(0, 0, 0);
+        bool blockLight = true;
+        if (y < 0)
+            blockLight = !lightMap[x, 0, z];
+        else
+            blockLight = !lightMap[x, y, z];
+
+        if (!blockLight)
+        {
+            colorToAdd = Color.black;
+        }
+
         colors.Add(b.BlockColor);
         colors.Add(b.BlockColor);
         colors.Add(b.BlockColor);
@@ -424,46 +685,46 @@ public class Chunck : MonoBehaviour
         {
             if (!InitialisBlockTransparent(x - 1, y + 1, z))
             {
-                colors[index + 2] = shadowColors;;
-                colors[index + 1] = shadowColors;;
+                colors[index + 2] = shadowColors + colorToAdd;
+                colors[index + 1] = shadowColors + colorToAdd;
             }
 
             if (!InitialisBlockTransparent(x + 1, y + 1, z))
             {
-                colors[index + 0] = shadowColors;;
-                colors[index + 3] = shadowColors;;
+                colors[index + 0] = shadowColors + colorToAdd;
+                colors[index + 3] = shadowColors + colorToAdd;
             }
 
             if (!InitialisBlockTransparent(x, y + 1, z - 1))
             {
-                colors[index + 1] = shadowColors;;
-                colors[index + 0] = shadowColors;;
+                colors[index + 1] = shadowColors + colorToAdd;
+                colors[index + 0] = shadowColors + colorToAdd;
             }
 
             if (!InitialisBlockTransparent(x, y + 1, z + 1))
             {
-                colors[index + 2] = shadowColors;;
-                colors[index + 3] = shadowColors;;
+                colors[index + 2] = shadowColors + colorToAdd;
+                colors[index + 3] = shadowColors + colorToAdd;
             }
 
             if (!InitialisBlockTransparent(x + 1, y + 1, z + 1))
             {
-                colors[index + 3] = shadowColors;;
+                colors[index + 3] = shadowColors + colorToAdd;
             }
 
             if (!InitialisBlockTransparent(x - 1, y + 1, z - 1))
             {
-                colors[index + 1] = shadowColors;;
+                colors[index + 1] = shadowColors + colorToAdd;
             }
 
             if (!InitialisBlockTransparent(x - 1, y + 1, z + 1))
             {
-                colors[index + 2] = shadowColors;;
+                colors[index + 2] = shadowColors + colorToAdd;
             }
 
             if (!InitialisBlockTransparent(x + 1, y + 1, z - 1))
             {
-                colors[index + 0] = shadowColors;;
+                colors[index + 0] = shadowColors + colorToAdd;
             }
         }
     }
@@ -481,8 +742,59 @@ public class Chunck : MonoBehaviour
         {
             if (!InitialisBlockTransparent(x + 1, y - 1, z) && InitialisBlockTransparent(x + 1, y, z))
             {
-                colors[index + 0] = shadowColors;;
-                colors[index + 1] = shadowColors;;
+                colors[index + 0] *= shadowColors;
+                colors[index + 1] *= shadowColors;
+            }
+        }
+        {
+            if (!InitialisBlockTransparent(x + 1, y + 1, z))
+            {
+                colors[index + 2] *= shadowColors;
+                colors[index + 3] *= shadowColors;
+            }
+        }
+        {
+            if (!InitialisBlockTransparent(x + 1, y, z + 1) && InitialisBlockTransparent(x + 1, y, z))
+            {
+                colors[index + 1] *= shadowColors;
+                colors[index + 2] *= shadowColors;
+            }
+        }
+        {
+            if (!InitialisBlockTransparent(x + 1, y, z - 1) && InitialisBlockTransparent(x + 1, y, z))
+            {
+                colors[index + 0] *= shadowColors;
+                colors[index + 3] *= shadowColors;
+            }
+        }
+
+        //4Sides
+        {
+            if (!InitialisBlockTransparent(x + 1, y - 1, z + 1) &&
+                InitialisBlockTransparent(x + 1, y, z + 1))
+            {
+                colors[index + 1] *= shadowColors;
+            }
+        }
+        {
+            if (!InitialisBlockTransparent(x + 1, y - 1, z - 1) &&
+                InitialisBlockTransparent(x + 1, y, z - 1))
+            {
+                colors[index + 0] *= shadowColors;
+            }
+        }
+        {
+            if (!InitialisBlockTransparent(x + 1, y + 1, z + 1) &&
+                InitialisBlockTransparent(x + 1, y, z + 1))
+            {
+                colors[index + 2] *= shadowColors;
+            }
+        }
+        {
+            if (!InitialisBlockTransparent(x + 1, y + 1, z - 1) &&
+                InitialisBlockTransparent(x + 1, y, z - 1))
+            {
+                colors[index + 3] *= shadowColors;
             }
         }
     }
@@ -495,13 +807,63 @@ public class Chunck : MonoBehaviour
         colors.Add(b.BlockColor);
         colors.Add(b.BlockColor);
         colors.Add(b.BlockColor);
-
         //SideShadows
         {
-            if (!InitialisBlockTransparent(x, y - 1, z) && InitialisBlockTransparent(x, y, z))
+            if (!InitialisBlockTransparent(x - 1, y - 1, z) && InitialisBlockTransparent(x - 1, y, z))
             {
-                colors[index + 0] = shadowColors;;
-                colors[index + 1] = shadowColors;;
+                colors[index + 0] *= shadowColors;
+                colors[index + 1] *= shadowColors;
+            }
+        }
+        {
+            if (!InitialisBlockTransparent(x - 1, y + 1, z))
+            {
+                colors[index + 2] *= shadowColors;
+                colors[index + 3] *= shadowColors;
+            }
+        }
+        {
+            if (!InitialisBlockTransparent(x - 1, y, z + 1) && InitialisBlockTransparent(x - 1, y, z))
+            {
+                colors[index + 1] *= shadowColors;
+                colors[index + 2] *= shadowColors;
+            }
+        }
+        {
+            if (!InitialisBlockTransparent(x - 1, y, z - 1) && InitialisBlockTransparent(x - 1, y, z))
+            {
+                colors[index + 0] *= shadowColors;
+                colors[index + 3] *= shadowColors;
+            }
+        }
+
+        //4Sides
+        {
+            if (!InitialisBlockTransparent(x - 1, y - 1, z + 1) &&
+                InitialisBlockTransparent(x - 1, y, z + 1))
+            {
+                colors[index + 1] *= shadowColors;
+            }
+        }
+        {
+            if (!InitialisBlockTransparent(x - 1, y - 1, z - 1) &&
+                InitialisBlockTransparent(x - 1, y, z - 1))
+            {
+                colors[index + 0] *= shadowColors;
+            }
+        }
+        {
+            if (!InitialisBlockTransparent(x - 1, y + 1, z + 1) &&
+                InitialisBlockTransparent(x - 1, y, z + 1))
+            {
+                colors[index + 2] *= shadowColors;
+            }
+        }
+        {
+            if (!InitialisBlockTransparent(x - 1, y + 1, z - 1) &&
+                InitialisBlockTransparent(x - 1, y, z - 1))
+            {
+                colors[index + 3] *= shadowColors;
             }
         }
     }
@@ -519,8 +881,59 @@ public class Chunck : MonoBehaviour
         {
             if (!InitialisBlockTransparent(x, y - 1, z - 1) && InitialisBlockTransparent(x, y, z - 1))
             {
-                colors[index + 0] = shadowColors;;
-                colors[index + 1] = shadowColors;;
+                colors[index + 0] *= shadowColors;
+                colors[index + 1] *= shadowColors;
+            }
+        }
+        {
+            if (!InitialisBlockTransparent(x, y + 1, z - 1))
+            {
+                colors[index + 2] *= shadowColors;
+                colors[index + 3] *= shadowColors;
+            }
+        }
+        {
+            if (!InitialisBlockTransparent(x + 1, y, z - 1) && InitialisBlockTransparent(x, y, z - 1))
+            {
+                colors[index + 0] *= shadowColors;
+                colors[index + 3] *= shadowColors;
+            }
+        }
+        {
+            if (!InitialisBlockTransparent(x - 1, y, z - 1) && InitialisBlockTransparent(x, y, z - 1))
+            {
+                colors[index + 2] *= shadowColors;
+                colors[index + 1] *= shadowColors;
+            }
+        }
+
+        //4Sides
+        {
+            if (!InitialisBlockTransparent(x + 1, y - 1, z - 1) &&
+                InitialisBlockTransparent(x + 1, y, z - 1))
+            {
+                colors[index + 0] *= shadowColors;
+            }
+        }
+        {
+            if (!InitialisBlockTransparent(x - 1, y - 1, z - 1) &&
+                InitialisBlockTransparent(x - 1, y, z - 1))
+            {
+                colors[index + 1] *= shadowColors;
+            }
+        }
+        {
+            if (!InitialisBlockTransparent(x + 1, y + 1, z - 1) &&
+                InitialisBlockTransparent(x + 1, y, z - 1))
+            {
+                colors[index + 3] *= shadowColors;
+            }
+        }
+        {
+            if (!InitialisBlockTransparent(x - 1, y + 1, z - 1) &&
+                InitialisBlockTransparent(x - 1, y, z - 1))
+            {
+                colors[index + 2] *= shadowColors;
             }
         }
     }
@@ -536,17 +949,68 @@ public class Chunck : MonoBehaviour
 
         //SideShadows
         {
-            if (!InitialisBlockTransparent(x, y - 1, z) && InitialisBlockTransparent(x, y, z))
+            if (!InitialisBlockTransparent(x, y - 1, z + 1) && InitialisBlockTransparent(x, y, z + 1))
             {
-                colors[index + 0] = shadowColors;;
-                colors[index + 1] = shadowColors;;
+                colors[index + 0] *= shadowColors;
+                colors[index + 1] *= shadowColors;
+            }
+        }
+        {
+            if (!InitialisBlockTransparent(x, y + 1, z + 1))
+            {
+                colors[index + 2] *= shadowColors;
+                colors[index + 3] *= shadowColors;
+            }
+        }
+        {
+            if (!InitialisBlockTransparent(x + 1, y, z + 1) && InitialisBlockTransparent(x, y, z + 1))
+            {
+                colors[index + 0] *= shadowColors;
+                colors[index + 3] *= shadowColors;
+            }
+        }
+        {
+            if (!InitialisBlockTransparent(x - 1, y, z + 1) && InitialisBlockTransparent(x, y, z + 1))
+            {
+                colors[index + 2] *= shadowColors;
+                colors[index + 1] *= shadowColors;
+            }
+        }
+
+        //4Sides
+        {
+            if (!InitialisBlockTransparent(x + 1, y - 1, z + 1) &&
+                InitialisBlockTransparent(x + 1, y, z + 1))
+            {
+                colors[index + 0] *= shadowColors;
+            }
+        }
+        {
+            if (!InitialisBlockTransparent(x - 1, y - 1, z + 1) &&
+                InitialisBlockTransparent(x - 1, y, z + 1))
+            {
+                colors[index + 1] *= shadowColors;
+            }
+        }
+        {
+            if (!InitialisBlockTransparent(x + 1, y + 1, z + 1) &&
+                InitialisBlockTransparent(x + 1, y, z + 1))
+            {
+                colors[index + 3] *= shadowColors;
+            }
+        }
+        {
+            if (!InitialisBlockTransparent(x - 1, y + 1, z + 1) &&
+                InitialisBlockTransparent(x - 1, y, z + 1))
+            {
+                colors[index + 2] *= shadowColors;
             }
         }
     }
 
     bool isBlockTransparent(int x, int y, int z)
     {
-        if( x >= Width)
+        if (x >= Width)
         {
             Vector3 worldPosition = new Vector3(x, y, z) + transform.position;
 
@@ -563,7 +1027,6 @@ public class Chunck : MonoBehaviour
             }
             return true;
         }
-
         if (x < 0)
         {
             Vector3 worldPosition = new Vector3(x, y, z) + transform.position;
@@ -581,7 +1044,6 @@ public class Chunck : MonoBehaviour
             }
             return true;
         }
-
         if (z >= Width)
         {
             Vector3 worldPosition = new Vector3(x, y, z) + transform.position;
@@ -599,7 +1061,6 @@ public class Chunck : MonoBehaviour
             }
             return true;
         }
-
         if (z < 0)
         {
             Vector3 worldPosition = new Vector3(x, y, z) + transform.position;
@@ -617,8 +1078,7 @@ public class Chunck : MonoBehaviour
             }
             return true;
         }
-
-        if( y >= Height)
+        if (y >= Height)
         {
             Vector3 worldPosition = new Vector3(x, y, z) + transform.position;
 
@@ -635,7 +1095,6 @@ public class Chunck : MonoBehaviour
             }
             return true;
         }
-
         if (y < 0)
         {
             Vector3 worldPosition = new Vector3(x, y, z) + transform.position;
@@ -667,7 +1126,7 @@ public class Chunck : MonoBehaviour
         if (x >= Width || y >= Height || z >= Width
             || x < 0 || y < 0 || z < 0)
         {
-            if (GetTheoreticalBlock(transform.position + new Vector3(x, y, z)) == null)
+            if (GetTheoreticalBlock(pos + new Vector3(x, y, z)) == null)
                 return true;
             else
                 return false;
@@ -684,7 +1143,7 @@ public class Chunck : MonoBehaviour
 
     public static Chunck GetChunck(int x, int y, int z)
     {
-        for (int i = 0; i < Chuncks.Count; i ++ )
+        for (int i = 0; i < Chuncks.Count; i++)
         {
             Transform t = Chuncks[i];
             Vector3 pos = new Vector3(x, y, z);
@@ -698,6 +1157,26 @@ public class Chunck : MonoBehaviour
             return t.gameObject.GetComponent<Chunck>();
         }
         return null;
+    }
+
+    public static bool ChunckExists(int x, int y, int z)
+    {
+        for (int i = 0; i < Chuncks.Count; i++)
+        {
+            Transform t = Chuncks[i];
+            Vector3 pos = new Vector3(x, y, z);
+            if (t.position == null)
+                return true;
+            Vector3 cpos = t.position;
+
+            if (pos.x < cpos.x || pos.y < cpos.y || pos.z < cpos.z || pos.x >= cpos.x + Width || pos.y >= cpos.y + Height || pos.z >= cpos.z + Width)
+            {
+                continue;
+            }
+
+            return true;
+        }
+        return false;
     }
 
     public void SetBlock(Vector3 worldPos, Block b)
@@ -716,7 +1195,45 @@ public class Chunck : MonoBehaviour
         }
         else
         {
+            if (b == null)
+            {
+                Block mb = map[Mathf.FloorToInt(localPos.x), Mathf.FloorToInt(localPos.y), Mathf.FloorToInt(localPos.z)];
+                if (mb != null)
+                {
+                    GameObject g = new GameObject("DropedI" + mb.BlockName) as GameObject;
+                    CubeDropGenerator cdg = g.gameObject.AddComponent<CubeDropGenerator>();
+                    cdg.StartCube(mb);
+
+                    cdg.transform.position = worldPos - new Vector3(1, 0, 0);
+                    cdg.gameObject.AddComponent<Rigidbody>();
+                    cdg.renderer.material = this.gameObject.renderer.material;
+
+                    cdg.transform.localScale = new Vector3(0.3f, 0.3f, 0.3f);
+                    cdg.gameObject.layer = 8;
+                }
+            }
             map[Mathf.FloorToInt(localPos.x), Mathf.FloorToInt(localPos.y), Mathf.FloorToInt(localPos.z)] = b;
+
+            string[] blocosNoC = File.ReadAllLines(Application.dataPath + "\\" + GameManager.worldName + "\\" + pos.ToString());
+            int i = 0;
+            for (int z = 0; z < Width; z++)
+            {
+                for (int x = 0; x < Width; x++)
+                {
+                    for (int y = 0; y < Height; y++)
+                    {
+                        if (x == Mathf.FloorToInt(localPos.x) && y == Mathf.FloorToInt(localPos.y) && z == Mathf.FloorToInt(localPos.z))
+                        {
+                            if (b == null)
+                                blocosNoC[i] = "-1";
+                            else
+                                blocosNoC[i] = b.BlockID.ToString();
+                        }
+                        i++;
+                    }
+                }
+            }
+            File.WriteAllLines(Application.dataPath + "\\" + GameManager.worldName + "\\" + pos.ToString(), blocosNoC);
         }
 
         StartCoroutine(RecalculateMesh());
@@ -730,7 +1247,6 @@ public class Chunck : MonoBehaviour
             }
             StartCoroutine(right.RecalculateMesh());
         }
-
         if (Mathf.FloorToInt(localPos.x) <= 1)
         {
             if (left == null)
@@ -739,7 +1255,6 @@ public class Chunck : MonoBehaviour
             }
             StartCoroutine(left.RecalculateMesh());
         }
-
         if (Mathf.FloorToInt(localPos.z) >= Width - 1)
         {
             if (front == null)
@@ -748,7 +1263,6 @@ public class Chunck : MonoBehaviour
             }
             StartCoroutine(front.RecalculateMesh());
         }
-
         if (Mathf.FloorToInt(localPos.z) <= 1)
         {
             if (back == null)
@@ -757,7 +1271,6 @@ public class Chunck : MonoBehaviour
             }
             StartCoroutine(back.RecalculateMesh());
         }
-
         if (Mathf.FloorToInt(localPos.y) >= Height - 1)
         {
             if (top == null)
@@ -766,7 +1279,6 @@ public class Chunck : MonoBehaviour
             }
             StartCoroutine(top.RecalculateMesh());
         }
-
         if (Mathf.FloorToInt(localPos.y) <= 1)
         {
             if (bottom == null)
@@ -799,8 +1311,8 @@ public class Chunck : MonoBehaviour
 
 public class Block
 {
-    public Texture ItemView;
     public string BlockName;
+    public Texture ItemView;
     public int BlockID;
     public bool Trasnsparent = false;
     public int TextureX;
@@ -816,7 +1328,7 @@ public class Block
     public Color BlockColor = Color.white;
 
     public int BlockMaxStack = 64;
-    
+
     public Block()
     {
         BlockID = -1;
@@ -834,6 +1346,8 @@ public class Block
         TextureYSide = tY;
         TextureXBottom = tX;
         TextureYBottom = tY;
+
+        ItemView = Resources.Load<Texture>(name);
     }
 
     public Block(string name, bool transparent, int tX, int tY, int sX, int sY)
@@ -847,6 +1361,7 @@ public class Block
         TextureYSide = sY;
         TextureXBottom = tX;
         TextureYBottom = tY;
+        ItemView = Resources.Load<Texture>(name);
     }
 
     public Block(string name, bool transparent, int tX, int tY, int sX, int sY, int bX, int bY)
@@ -860,6 +1375,7 @@ public class Block
         TextureYSide = sY;
         TextureXBottom = bX;
         TextureYBottom = bY;
+        ItemView = Resources.Load<Texture>(name);
     }
 
     public void SetColor(Color color, bool glow)
@@ -875,9 +1391,19 @@ public class Block
 
     public static Block getBlock(string name)
     {
-        foreach(Block b in BlockList.Blocks)
+        foreach (Block b in BlockList.Blocks)
         {
             if (b.BlockName == name)
+                return b;
+        }
+        return new Block();
+    }
+
+    public static Block getBlock(int id)
+    {
+        foreach (Block b in BlockList.Blocks)
+        {
+            if (b.BlockID == id)
                 return b;
         }
         return new Block();
