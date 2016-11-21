@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using System.Collections;
+using System.IO;
 using System;
 
 public class Menu : MonoBehaviour {
@@ -10,12 +11,14 @@ public class Menu : MonoBehaviour {
     public GameObject loadMenu;
     public GameObject optionenMenu;
     public GameObject multiPlayerMenu;
-
-
+    int pages;
+    int selectedID;
+    
     //--------------------------------------------------------------WORLDMENUECREATE-------------------------
     public InputField nameT;
     public InputField seedT;
     public Text error;
+    public LabelHolder labelholder;
 
     public void CreateWorldBack()
     {
@@ -29,26 +32,25 @@ public class Menu : MonoBehaviour {
         createMenu.SetActive(true);
         mainMenu.SetActive(false);
         loadMenu.SetActive(false);
-        nameT.text = " ";
-        seedT.text = " ";
+
         error.text = " ";
     }
 
     public void GenerateMap()
     {
-        Play(nameT.text, seedT.text);
+        Play();
     }
 
-    public void Play(string name, string seeds)
+    public void Play()
     {
-        if(System.IO.Directory.Exists(Application.dataPath + "\\" + name ))
+        if (System.IO.Directory.Exists(Application.dataPath + "\\" + nameT.text))
         {
             error.text = "World already exists.!";
             return;
         }
-        int seed = Convert.ToInt32(seeds);
+        int seed = Convert.ToInt32(seedT);
         GameManager.seed = seed;
-        GameManager.worldName = name;
+        GameManager.worldName = nameT.text;
         Application.LoadLevel(1);
     }
 
@@ -56,7 +58,47 @@ public class Menu : MonoBehaviour {
 
     //--------------------------------------------------------------WORLDMENUELOAD---------------------------
     public InputField WtL;
-    public Text error1;
+
+    public void UpdateWorldList()
+    {
+        string[] worlds = Directory.GetDirectories(Application.dataPath + "\\saves\\");
+        pages = Mathf.FloorToInt(worlds.Length / 9);
+        labelholder.scrolbar.GetComponent<Scrollbar>().numberOfSteps = pages;
+        int pagesValue = Mathf.FloorToInt(labelholder.scrolbar.GetComponent<Scrollbar>().value * pages);
+        for (int u = 0; u < 9; u++)
+        {
+            labelholder.Worlds[u].GetComponentInChildren<Text>().text = "";
+        }
+        for (int i = 0; i < worlds.Length; i++)
+        {
+            int page = Mathf.FloorToInt(i / 9);
+            if (page == pagesValue)
+            {
+                labelholder.Worlds[i].GetComponentInChildren<Text>().text = getFolderName(worlds[i]);
+            }
+        }
+    }
+
+    string getFolderName(string path)
+    {
+        string[] s = path.Split('/');
+        string[] s2 = s[s.Length - 1].Split('\\');
+        return s2[s2.Length - 1];
+    }
+
+    public void SetSelectedID(int id)
+    {
+        int pagesValue = Mathf.FloorToInt(labelholder.scrolbar.GetComponent<Scrollbar>().value * pages);
+        int i = pagesValue * 9;
+        i += id;
+
+        for (int u = 0; u < 9; u++)
+        {
+            labelholder.Worlds[u].GetComponentInChildren<Text>().color = Color.white;
+        }
+        labelholder.Worlds[id].GetComponentInChildren<Text>().color = Color.blue;
+        selectedID = i;
+    }
 
     public void LoadWorld()
     {
@@ -65,17 +107,28 @@ public class Menu : MonoBehaviour {
         loadMenu.SetActive(true);
     }
 
-    public void LoadMap()
+    public void PlayMap()
     {
-        string wName = WtL.text;
-        if (!System.IO.Directory.Exists(Application.dataPath + "\\" + WtL))
+        
+        if (!System.IO.Directory.Exists(Application.dataPath + "\\saves\\" + labelholder.Worlds[selectedID].GetComponentInChildren<Text>().text))
         {
-            error1.text = "World not Found.!";
+            error.text = "World not Found.!";
             return;
         }
-        GameManager.worldName = wName;
-        GameManager.seed = int.Parse(System.IO.File.ReadAllText(Application.dataPath + "\\" + WtL + "\\seed"));
+        GameManager.worldName = labelholder.Worlds[selectedID].GetComponentInChildren<Text>().text;
+        GameManager.seed = int.Parse(System.IO.File.ReadAllText(Application.dataPath + "\\saves\\" + labelholder.Worlds[selectedID].GetComponentInChildren<Text>().text + "\\seed"));
         Application.LoadLevel(1);
+    }
+
+    public void DeleteMap()
+    {
+        string path = Application.dataPath + "\\saves\\" + labelholder.Worlds[selectedID].GetComponentInChildren<Text>().text;
+        foreach(string f in Directory.GetFiles(path))
+        {
+            File.Delete(f);
+        }
+        error.text = "World Deleted.!";
+        UpdateWorldList();
     }
     //--------------------------------------------------------------WORLDMENUELOAD---------------------------
     public void Optionen()
