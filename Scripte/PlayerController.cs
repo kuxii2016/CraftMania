@@ -4,56 +4,72 @@ using System.Collections;
 public class PlayerController : MonoBehaviour
 {
     public GameObject chunckPrefab;
-    public int viewRange = 30;
-    int collumnHeight = 60;
-
+    public static GameObject ChunckPrefab;
+    public static int viewRange = 100;
     public GameObject BlockHighlight;
-
     public LayerMask layerMask;
-    int gridSize = 1;
-
+    public CharacterController characterController;
     bool once = true;
-    void Update () 
+
+    void Awake()
     {
-        if (Mathf.FloorToInt(Time.time) % 5 == 0 && once)
+        Physics.IgnoreLayerCollision(9, 8);
+
+        characterController.enabled = false;
+
+        ChunckPrefab = chunckPrefab;
+
+        for (float x = transform.position.x - (Chunck.Width * 3); x < transform.position.x + (Chunck.Width * 3); x += Chunck.Width)
         {
-            for (float x = transform.position.x - viewRange; x < transform.position.x + viewRange; x += Chunck.Width * gridSize)
+            for (float y = transform.position.y - (Chunck.Height * 3); y < transform.position.y + (Chunck.Height * 3); y += Chunck.Height)
             {
-                for (float z = transform.position.z - viewRange; z < transform.position.z + viewRange; z += Chunck.Width * gridSize)
+                for (float z = transform.position.z - (Chunck.Width * 3); z < transform.position.z + (Chunck.Width * 3); z += Chunck.Width)
                 {
                     int xx = Mathf.FloorToInt(x / Chunck.Width) * Chunck.Width;
                     int zz = Mathf.FloorToInt(z / Chunck.Width) * Chunck.Width;
+                    int yy = Mathf.FloorToInt(y / Chunck.Height) * Chunck.Height;
 
-                    Chunck chunck = Chunck.GetChunck(Mathf.FloorToInt(xx), 0, Mathf.FloorToInt(zz));
-                    if (chunck == null)
+                    if (!Chunck.ChunckExists(xx, yy, zz))
                     {
-                        for (int y = 0; y < collumnHeight; y++)
-                        {
-                            int yr = (y * Chunck.Height) /*- (y)*/;
+                        Instantiate(chunckPrefab, new Vector3(xx, yy, zz), Quaternion.identity);
 
-                            for (int ix = 0; ix < gridSize; ix++)
-                            {
-                                for (int iz = 0; iz < gridSize; iz++)
-                                {
-                                    Instantiate(chunckPrefab, new Vector3(xx + (Chunck.Width * ix), yr, zz + (Chunck.Width * iz)), Quaternion.identity);
-                                }
-                            }
-                        }
                     }
                 }
             }
-            once = false;
         }
-        else
-        {
-            once = true;
-        }
+    }
 
+    void Update()
+    {
+        if (Time.time > 5)
+            characterController.enabled = true;
         BlockController();
+        ChunkSpawn();
+    }
 
-        Chunck c = Chunck.GetChunck(10,90,10);
-        if (c == null)
-            return;
+    void ChunkSpawn()
+    {
+        if (Chunck.working) return;
+
+        Chunck c = null;
+        float lastDistance = 9999999f;
+        for (int i = 0; i < Chunck.Chuncks.Count; i++)
+        {
+            float d = Vector3.Distance(this.transform.position, Chunck.Chuncks[i].transform.position);
+            if (d < lastDistance)
+            {
+                Chunck cc = Chunck.Chuncks[i].GetComponent<Chunck>();
+                if (cc.ready == false)
+                {
+                    lastDistance = d;
+                    c = cc;
+                }
+            }
+        }
+        if (c != null)
+        {
+            c.StartFunction();
+        }
     }
 
     void BlockController()
