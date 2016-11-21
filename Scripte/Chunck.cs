@@ -8,6 +8,7 @@ using System.IO;
 [RequireComponent(typeof(MeshFilter))]
 [RequireComponent(typeof(MeshCollider))]
 [RequireComponent(typeof(MeshRenderer))]
+
 public class Chunck : MonoBehaviour
 {
     public Block[,,] map;
@@ -482,11 +483,12 @@ public class Chunck : MonoBehaviour
 
         noiseValue += (200 - (float)pos.y) / 18f;
         noiseValue /= (float)pos.y / 8f;
-
         if (noiseValue > 0.5f)
         {
             if (noiseValue > 0.6f)
                 return Block.getBlock("Stone");
+            //if (biomeValue > 0.6f)
+            //    return Block.getBlock("SandStone");
 
             if (biomeValue > 0.1f)
                 return Block.getBlock("Sand");
@@ -1206,7 +1208,7 @@ public class Chunck : MonoBehaviour
 
                     cdg.transform.position = worldPos - new Vector3(1, 0, 0);
                     cdg.gameObject.AddComponent<Rigidbody>();
-                    cdg.renderer.material = this.gameObject.renderer.material;
+                    cdg.GetComponent<Renderer>().material = this.gameObject.GetComponent<Renderer>().material;
 
                     cdg.transform.localScale = new Vector3(0.3f, 0.3f, 0.3f);
                     cdg.gameObject.layer = 8;
