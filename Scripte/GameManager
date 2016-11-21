@@ -1,0 +1,15 @@
+using UnityEngine;
+using System.Collections;
+
+public class GameManager : MonoBehaviour {
+
+   // public static int seed;
+   // public static string worldName;
+    public static int seed = 515;
+    public static string worldName = "Kuxii";
+	void Awake () {
+
+        DontDestroyOnLoad(this.gameObject);
+	}
+	
+}
