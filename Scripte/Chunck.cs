@@ -56,7 +56,7 @@ public class Chunck : MonoBehaviour
         }
     }
 
-    GameObject pl;
+    GameObject pl;  
     Vector3 pos;
     public static bool spawningChuncksS = false;
     public bool IamspawningChuncksS = false;
@@ -219,6 +219,11 @@ public class Chunck : MonoBehaviour
 
     public IEnumerator CalculateMap()
     {
+        if (System.IO.Directory.Exists(Application.dataPath + "\\saves" ))
+        {
+            Directory.CreateDirectory(Application.dataPath + "\\saves\\");
+        }
+
         if (tmap != null && tmap.IsAlive)
         {
 
@@ -226,7 +231,7 @@ public class Chunck : MonoBehaviour
         else
         {
             bool createFile = true;
-            if (System.IO.File.Exists(Application.dataPath + "\\" + GameManager.worldName + "\\" + pos.ToString()))
+            if (System.IO.File.Exists(Application.dataPath + "\\saves\\" + GameManager.worldName + "\\" + pos.ToString()))
             {
                 createFile = false;
             }
@@ -243,7 +248,7 @@ public class Chunck : MonoBehaviour
                 lightMap = new bool[Width, Height, Width];
                 map = new Block[Width, Height, Width];
 
-                string[] linhas = File.ReadAllLines(Application.dataPath + "\\" + GameManager.worldName + "\\" + pos.ToString());
+                string[] linhas = File.ReadAllLines(Application.dataPath + "\\saves\\" + GameManager.worldName + "\\" + pos.ToString());
 
                 int i = 0;
                 for (int z = 0; z < Width; z++)
@@ -276,22 +281,29 @@ public class Chunck : MonoBehaviour
                     yield return 0;
                 }
 
-                if (!Directory.Exists(Application.dataPath + "\\" + GameManager.worldName))
+                if (!Directory.Exists(Application.dataPath + "\\saves\\" + GameManager.worldName))
                 {
-                    Directory.CreateDirectory(Application.dataPath + "\\" + GameManager.worldName);
+                    Directory.CreateDirectory(Application.dataPath + "\\saves\\" + GameManager.worldName);
                 }
 
-                if (!System.IO.File.Exists(Application.dataPath + "\\" + GameManager.worldName + "\\" + "seed"))
+                if (!System.IO.File.Exists(Application.dataPath + "\\saves\\" + GameManager.worldName + "\\" + "seed"))
                 {
-                    StreamWriter f = File.CreateText(Application.dataPath + "\\" + GameManager.worldName + "\\" + "seed");
+                    StreamWriter f = File.CreateText(Application.dataPath + "\\saves\\" + GameManager.worldName + "\\" + "seed");
                     f.Write(GameManager.seed);
                     f.Close();
                 }
 
-                File.Create(Application.dataPath + "\\" + GameManager.worldName + "\\" + pos.ToString()).Close();
+                if (!System.IO.File.Exists(Application.dataPath + "\\saves\\" + GameManager.worldName + "\\" + "gameversion"))
+                {
+                    StreamWriter f = File.CreateText(Application.dataPath + "\\saves\\" + GameManager.worldName + "\\" + "gameversion");
+                    f.Write("1.0.0.1");
+                    f.Close();
+                }
+
+                File.Create(Application.dataPath + "\\saves\\" + GameManager.worldName + "\\" + pos.ToString()).Close();
                 List<string> linhas = new List<string>();
 
-                TextWriter c = new StreamWriter(Application.dataPath + "\\" + GameManager.worldName + "\\" + pos.ToString());
+                TextWriter c = new StreamWriter(Application.dataPath + "\\saves\\" + GameManager.worldName + "\\" + pos.ToString());
 
                 for (int z = 0; z < Width; z++)
                 {
@@ -1216,7 +1228,7 @@ public class Chunck : MonoBehaviour
             }
             map[Mathf.FloorToInt(localPos.x), Mathf.FloorToInt(localPos.y), Mathf.FloorToInt(localPos.z)] = b;
 
-            string[] blocosNoC = File.ReadAllLines(Application.dataPath + "\\" + GameManager.worldName + "\\" + pos.ToString());
+            string[] blocosNoC = File.ReadAllLines(Application.dataPath + "\\saves\\" + GameManager.worldName + "\\" + pos.ToString());
             int i = 0;
             for (int z = 0; z < Width; z++)
             {
@@ -1235,7 +1247,7 @@ public class Chunck : MonoBehaviour
                     }
                 }
             }
-            File.WriteAllLines(Application.dataPath + "\\" + GameManager.worldName + "\\" + pos.ToString(), blocosNoC);
+            File.WriteAllLines(Application.dataPath + "\\saves\\" + GameManager.worldName + "\\" + pos.ToString(), blocosNoC);
         }
 
         StartCoroutine(RecalculateMesh());
